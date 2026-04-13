@@ -1,0 +1,1326 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Imtihan | منصة الامتحانات الإلكترونية الذكية</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <!-- Firebase SDKs -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getAnalytics } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-analytics.js";
+        import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+        import { getFirestore, doc, setDoc, getDoc, updateDoc, collection, getDocs, addDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        
+        const firebaseConfig = {
+            apiKey: "AIzaSyDy1KzTv-M1fWwljtUw6JikkW3WDM7xZ9Y",
+            authDomain: "imtihan-493215.firebaseapp.com",
+            projectId: "imtihan-493215",
+            storageBucket: "imtihan-493215.firebasestorage.app",
+            messagingSenderId: "870773532583",
+            appId: "1:870773532583:web:4922b27130841607fdf882",
+            measurementId: "G-L7E40NW5E3"
+        };
+        
+        const app = initializeApp(firebaseConfig);
+        const analytics = getAnalytics(app);
+        const auth = getAuth(app);
+        const provider = new GoogleAuthProvider();
+        const db = getFirestore(app);
+        
+        window.auth = auth;
+        window.db = db;
+        window.provider = provider;
+        window.signInWithPopup = signInWithPopup;
+        window.signOut = signOut;
+        window.onAuthStateChanged = onAuthStateChanged;
+        window.doc = doc;
+        window.setDoc = setDoc;
+        window.getDoc = getDoc;
+        window.updateDoc = updateDoc;
+        window.collection = collection;
+        window.getDocs = getDocs;
+        window.addDoc = addDoc;
+        window.deleteDoc = deleteDoc;
+        
+        console.log("✅ Firebase initialized!");
+    </script>
+    
+    <style>
+        body {
+            font-family: 'Cairo', 'Tahoma', sans-serif;
+            direction: rtl;
+        }
+        .hidden {
+            display: none !important;
+        }
+        .sidebar-open {
+            transform: translateX(0) !important;
+        }
+        .timer-danger {
+            animation: pulse 1s infinite;
+            color: red;
+            font-weight: bold;
+        }
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+        .copy-btn {
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .copy-btn:hover {
+            background: #1e40af;
+        }
+        .user-avatar-circle {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #6366f1, #8b5cf6);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 18px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .user-avatar-circle:hover {
+            transform: scale(1.05);
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4);
+        }
+        .user-dropdown {
+            position: absolute;
+            top: 50px;
+            left: 0;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+            min-width: 200px;
+            z-index: 100;
+            overflow: hidden;
+        }
+        .user-dropdown div {
+            display: block;
+            padding: 10px 16px;
+            color: #374151;
+            transition: background 0.2s;
+            cursor: pointer;
+        }
+        .user-dropdown div:hover {
+            background: #f3f4f6;
+        }
+        .admin-modal {
+            background: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(4px);
+        }
+        .admin-tab {
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .admin-tab.active {
+            border-bottom: 3px solid #6366f1;
+            color: #6366f1;
+        }
+        /* تنسيق القائمة الجانبية للزوار */
+        .menu-item-disabled {
+            opacity: 0.6;
+            cursor: pointer;
+        }
+        .menu-item-disabled:hover {
+            opacity: 0.8;
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-blue-50 to-indigo-100 min-h-screen">
+
+    <!-- ==================== القائمة الجانبية ==================== -->
+    <div id="sidebar" class="fixed top-0 right-0 w-80 h-full bg-white shadow-2xl z-50 transform translate-x-full transition-transform duration-300 overflow-y-auto">
+        <div class="p-6">
+            <div class="flex justify-between items-center mb-8 pb-4 border-b">
+                <div class="flex items-center gap-2">
+                    <i class="fas fa-pen-alt text-indigo-600 text-2xl"></i>
+                    <h2 class="text-2xl font-bold text-indigo-600">Imtihan</h2>
+                </div>
+                <button onclick="closeSidebar()" class="text-gray-500 hover:text-red-500 text-3xl">&times;</button>
+            </div>
+            
+            <div class="space-y-3">
+                <button onclick="navigateTo('dashboard')" class="w-full text-right p-3 rounded-xl hover:bg-indigo-50 transition flex items-center gap-3">
+                    <i class="fas fa-tachometer-alt text-indigo-600 w-6"></i>
+                    <span class="font-medium">الرئيسية</span>
+                </button>
+                <button onclick="requireLoginThen('createExam')" class="w-full text-right p-3 rounded-xl hover:bg-indigo-50 transition flex items-center gap-3" id="createExamMenuItem">
+                    <i class="fas fa-plus-circle text-indigo-600 w-6"></i>
+                    <span class="font-medium">إنشاء امتحان</span>
+                </button>
+                <button onclick="requireLoginThen('examsList')" class="w-full text-right p-3 rounded-xl hover:bg-indigo-50 transition flex items-center gap-3" id="examsListMenuItem">
+                    <i class="fas fa-list text-indigo-600 w-6"></i>
+                    <span class="font-medium">قائمة الامتحانات</span>
+                </button>
+                <button onclick="requireLoginThen('questionBank')" class="w-full text-right p-3 rounded-xl hover:bg-indigo-50 transition flex items-center gap-3" id="questionBankMenuItem">
+                    <i class="fas fa-database text-indigo-600 w-6"></i>
+                    <span class="font-medium">بنك الأسئلة</span>
+                </button>
+                <button onclick="requireLoginThen('analytics')" class="w-full text-right p-3 rounded-xl hover:bg-indigo-50 transition flex items-center gap-3" id="analyticsMenuItem">
+                    <i class="fas fa-chart-line text-indigo-600 w-6"></i>
+                    <span class="font-medium">التحليلات</span>
+                </button>
+                <button onclick="navigateTo('myAccount')" class="w-full text-right p-3 rounded-xl hover:bg-indigo-50 transition flex items-center gap-3">
+                    <i class="fas fa-user-circle text-indigo-600 w-6"></i>
+                    <span class="font-medium">حسابي</span>
+                </button>
+                <button onclick="requireLoginThen('upgrade')" class="w-full text-right p-3 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 text-white hover:from-amber-600 transition flex items-center gap-3" id="upgradeMenuItem">
+                    <i class="fas fa-gem w-6"></i>
+                    <span class="font-medium">🚀 رقي حسابك الان!</span>
+                </button>
+                <hr class="my-4" id="logoutDivider">
+                <button onclick="logout()" class="w-full text-right p-3 rounded-xl hover:bg-red-50 transition flex items-center gap-3 text-red-600" id="logoutBtn">
+                    <i class="fas fa-sign-out-alt w-6"></i>
+                    <span class="font-medium">تسجيل خروج</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== الهيدر ==================== -->
+    <nav class="bg-white shadow-lg sticky top-0 z-40">
+        <div class="container mx-auto px-4 py-3">
+            <div class="flex justify-between items-center">
+                <!-- الجزء الأيمن: زر المينيو والشعار -->
+                <div class="flex items-center gap-4">
+                    <button id="menuButton" onclick="toggleSidebar()" class="text-gray-600 hover:text-indigo-600 text-2xl">
+                        <i class="fas fa-bars"></i>
+                    </button>
+                    <div onclick="goToHome()" class="flex items-center gap-2 cursor-pointer">
+                        <i class="fas fa-pen-alt text-indigo-600 text-xl"></i>
+                        <span class="text-xl font-bold text-gray-800">Imtihan</span>
+                        <span class="text-xs text-indigo-500 bg-indigo-100 px-2 py-1 rounded-full">امتحان</span>
+                    </div>
+                </div>
+                
+                <!-- الجزء الأوسط: عداد الامتحانات (يظهر فقط بعد تسجيل الدخول) -->
+                <div id="examsCounterContainer" class="hidden md:flex items-center gap-2 bg-indigo-50 px-4 py-2 rounded-full">
+                    <i class="fas fa-file-alt text-indigo-600"></i>
+                    <span class="text-sm text-gray-600">عدد الامتحانات:</span>
+                    <span id="examsCounter" class="font-bold text-indigo-600">0</span>
+                </div>
+                
+                <!-- الجزء الأيسر: البحث والمستخدم -->
+                <div class="flex items-center gap-4 relative">
+                    <!-- زر البحث -->
+                    <div class="relative">
+                        <button onclick="toggleSearchBox()" class="text-gray-600 hover:text-indigo-600 text-xl">
+                            <i class="fas fa-search"></i>
+                        </button>
+                        <div id="searchBox" class="hidden absolute left-0 top-full mt-2 w-80 bg-white rounded-lg shadow-lg p-3 z-50">
+                            <input type="text" id="searchInput" onkeyup="searchExams()" placeholder="ابحث عن امتحان..." class="w-full p-2 border rounded-lg text-sm">
+                            <div id="searchResults" class="mt-2 max-h-60 overflow-y-auto"></div>
+                        </div>
+                    </div>
+                    
+                    <!-- زر Sign Up / دائرة المستخدم -->
+                    <div id="userArea" class="relative">
+                        <!-- زر Sign Up (يظهر قبل تسجيل الدخول) -->
+                        <button id="signupBtn" onclick="goToSignUp()" class="bg-indigo-600 text-white px-5 py-2 rounded-lg text-sm hover:bg-indigo-700 transition">
+                            <i class="fas fa-user-plus ml-1"></i> Sign Up
+                        </button>
+                        
+                        <!-- دائرة المستخدم (تظهر بعد تسجيل الدخول) -->
+                        <div id="userAvatarArea" class="hidden relative">
+                            <div id="userAvatarCircle" class="user-avatar-circle" onclick="toggleUserDropdown()">
+                                <span id="userInitial"></span>
+                            </div>
+                            <div id="userDropdown" class="user-dropdown hidden">
+                                <div class="px-4 py-3 border-b bg-gray-50">
+                                    <p class="font-semibold text-gray-800" id="userNameDisplay"></p>
+                                    <p class="text-xs text-gray-500" id="userEmailDisplay"></p>
+                                </div>
+                                <div onclick="navigateTo('myAccount'); closeUserDropdown()">
+                                    <i class="fas fa-user ml-2"></i> حسابي
+                                </div>
+                                <div onclick="logout()">
+                                    <i class="fas fa-sign-out-alt ml-2 text-red-600"></i> <span class="text-red-600">تسجيل خروج</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- ==================== المحتوى الرئيسي ==================== -->
+    <div class="container mx-auto px-4 py-8">
+        <!-- لوحة التحكم (عامة للجميع) -->
+        <div id="dashboardSection" class="section">
+            <div class="bg-white rounded-2xl shadow-xl p-6 mb-8">
+                <h2 class="text-2xl font-bold text-gray-800 mb-6">
+                    <i class="fas fa-chalkboard-teacher text-indigo-600 ml-2"></i> مرحباً بك في منصة Imtihan
+                </h2>
+                
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                    <div class="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl p-6 text-white shadow-lg text-center">
+                        <i class="fas fa-file-alt text-4xl mb-3"></i>
+                        <h3 class="text-2xl font-bold" id="publicExamsCount">0</h3>
+                        <p class="opacity-90">امتحان منشور</p>
+                    </div>
+                    <div class="bg-gradient-to-br from-green-500 to-green-600 rounded-xl p-6 text-white shadow-lg text-center">
+                        <i class="fas fa-users text-4xl mb-3"></i>
+                        <h3 class="text-2xl font-bold" id="publicStudentsCount">0</h3>
+                        <p class="opacity-90">طالب شارك</p>
+                    </div>
+                    <div class="bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl p-6 text-white shadow-lg text-center">
+                        <i class="fas fa-star text-4xl mb-3"></i>
+                        <h3 class="text-2xl font-bold">مجاني</h3>
+                        <p class="opacity-90">8 امتحانات شهرياً</p>
+                    </div>
+                </div>
+                
+                <div class="bg-indigo-50 rounded-xl p-6 text-center">
+                    <p class="text-gray-700 mb-4">قم بتسجيل الدخول لإنشاء الامتحانات وإدارة النتائج والوصول إلى جميع الميزات</p>
+                    <button onclick="goToSignUp()" class="bg-indigo-600 text-white px-6 py-2 rounded-lg hover:bg-indigo-700 transition">
+                        <i class="fas fa-sign-in-alt ml-2"></i> سجل دخول الآن
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- إنشاء امتحان (يتطلب تسجيل دخول) -->
+        <div id="createExamSection" class="section hidden">
+            <div class="bg-white rounded-2xl shadow-xl p-6">
+                <h2 class="text-2xl font-bold text-gray-800 mb-6">إنشاء امتحان جديد</h2>
+                <div id="remainingExamsAlert" class="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-6">
+                    <div class="flex justify-between items-center">
+                        <span class="text-amber-800">الامتحانات المتبقية هذا الشهر:</span>
+                        <span id="remainingExams" class="text-2xl font-bold text-amber-600">0</span>
+                    </div>
+                </div>
+                <form id="examForm">
+                    <input type="text" id="examTitle" placeholder="عنوان الامتحان" class="w-full p-3 border rounded-lg mb-4" required>
+                    <div class="grid grid-cols-2 gap-4 mb-4">
+                        <input type="number" id="examTime" placeholder="الوقت (دقائق)" class="p-3 border rounded-lg">
+                        <input type="number" id="examTotalScore" placeholder="الدرجة الكلية" class="p-3 border rounded-lg">
+                    </div>
+                    <div id="questionsContainer" class="space-y-4 mb-4"></div>
+                    <button type="button" onclick="addQuestion()" class="bg-green-500 text-white px-4 py-2 rounded-lg mb-4">+ إضافة سؤال</button>
+                    <button type="submit" class="w-full bg-indigo-600 text-white py-3 rounded-lg font-bold">حفظ وإنشاء رابط</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- قائمة الامتحانات -->
+        <div id="examsListSection" class="section hidden">
+            <div class="bg-white rounded-2xl shadow-xl p-6">
+                <h2 class="text-2xl font-bold text-gray-800 mb-6">قائمة الامتحانات</h2>
+                <div id="examsListContainer" class="space-y-4"></div>
+            </div>
+        </div>
+
+        <!-- بنك الأسئلة -->
+        <div id="questionBankSection" class="section hidden">
+            <div class="bg-white rounded-2xl shadow-xl p-6">
+                <h2 class="text-2xl font-bold text-gray-800 mb-6">بنك الأسئلة</h2>
+                <button onclick="openAddQuestionModal()" class="bg-indigo-500 text-white px-4 py-2 rounded-lg mb-4">+ إضافة سؤال</button>
+                <div id="questionBankList" class="space-y-4"></div>
+            </div>
+        </div>
+
+        <!-- التحليلات -->
+        <div id="analyticsSection" class="section hidden">
+            <div class="bg-white rounded-2xl shadow-xl p-6">
+                <h2 class="text-2xl font-bold text-gray-800 mb-6">التحليلات</h2>
+                <canvas id="gradeChart" width="400" height="200"></canvas>
+            </div>
+        </div>
+
+        <!-- صفحة حسابي -->
+        <div id="myAccountSection" class="section hidden">
+            <div class="bg-white rounded-2xl shadow-xl p-6">
+                <h2 class="text-2xl font-bold text-gray-800 mb-6">حسابي</h2>
+                <div id="accountLoggedOutView" class="text-center py-8">
+                    <i class="fas fa-user-circle text-6xl text-gray-400 mb-4"></i>
+                    <p class="text-gray-600 mb-6">سجل دخولك باستخدام حساب جوجل للوصول إلى لوحة التحكم</p>
+                    <button onclick="loginWithGoogle()" class="bg-red-500 text-white px-6 py-3 rounded-lg text-lg hover:bg-red-600 transition">
+                        <i class="fab fa-google ml-2"></i> تسجيل الدخول بجوجل
+                    </button>
+                </div>
+                <div id="accountLoggedInView" class="hidden">
+                    <div class="flex flex-col md:flex-row gap-8">
+                        <div class="text-center">
+                            <div class="w-32 h-32 mx-auto bg-gradient-to-br from-indigo-500 to-purple-500 rounded-full flex items-center justify-center text-white text-5xl font-bold mb-4">
+                                <span id="accInitial"></span>
+                            </div>
+                            <h3 class="text-xl font-bold" id="accName"></h3>
+                            <p class="text-gray-500" id="accEmail"></p>
+                        </div>
+                        <div class="flex-1">
+                            <p>الباقة: <strong id="accPlan">مجانية</strong></p>
+                            <p>الامتحانات المتبقية: <strong id="accRemaining">0</strong></p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- صفحة الترقيات -->
+        <div id="upgradeSection" class="section hidden">
+            <div class="bg-white rounded-2xl shadow-xl p-6">
+                <h2 class="text-2xl font-bold text-gray-800 mb-6">الباقات المتاحة</h2>
+                <div id="plansContainer" class="grid grid-cols-1 md:grid-cols-3 gap-6"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- نافذة الطالب -->
+    <div id="studentExamContainer" class="hidden fixed inset-0 bg-gray-900 bg-opacity-95 z-50 overflow-y-auto">
+        <div class="container mx-auto px-4 py-8">
+            <div class="bg-white rounded-2xl p-6 max-w-4xl mx-auto">
+                <div id="studentExamContent"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- نافذة إضافة سؤال -->
+    <div id="addQuestionModal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
+        <div class="bg-white rounded-2xl p-6 w-full max-w-md">
+            <h3 class="text-xl font-bold mb-4">إضافة سؤال</h3>
+            <input type="text" id="newQText" placeholder="نص السؤال" class="w-full p-2 border rounded mb-2">
+            <select id="newQType" class="w-full p-2 border rounded mb-2">
+                <option value="mcq">اختيار من متعدد</option>
+                <option value="truefalse">صح/خطأ</option>
+            </select>
+            <div id="newQOptions"></div>
+            <input type="text" id="newQCorrect" placeholder="الإجابة الصحيحة" class="w-full p-2 border rounded mb-4">
+            <button onclick="addQuestionToBank()" class="w-full bg-indigo-600 text-white py-2 rounded-lg">إضافة</button>
+            <button onclick="closeAddQuestionModal()" class="w-full bg-gray-300 py-2 rounded-lg mt-2">إلغاء</button>
+        </div>
+    </div>
+
+    <!-- نافذة تأكيد حذف -->
+    <div id="deleteModal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
+        <div class="bg-white rounded-2xl p-6 w-full max-w-md text-center">
+            <p class="text-xl mb-4">هل أنت متأكد من حذف هذا الامتحان؟</p>
+            <div class="flex gap-3">
+                <button onclick="confirmDelete()" class="flex-1 bg-red-600 text-white py-2 rounded-lg">حذف</button>
+                <button onclick="closeDeleteModal()" class="flex-1 bg-gray-300 py-2 rounded-lg">إلغاء</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- نافذة المطور -->
+    <div id="adminModal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
+        <div class="bg-white rounded-2xl p-6 w-full max-w-2xl">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-2xl font-bold text-indigo-600">لوحة تحكم المطور</h2>
+                <button onclick="closeAdminModal()" class="text-gray-500 text-2xl">&times;</button>
+            </div>
+            
+            <div class="flex border-b mb-4">
+                <div class="admin-tab px-4 py-2 active" data-tab="clients" onclick="switchAdminTab('clients')">العملاء</div>
+                <div class="admin-tab px-4 py-2" data-tab="plans" onclick="switchAdminTab('plans')">الترقيات</div>
+                <div class="admin-tab px-4 py-2" data-tab="stats" onclick="switchAdminTab('stats')">الإحصائيات</div>
+            </div>
+            
+            <div id="adminClientsTab" class="admin-tab-content">
+                <h3 class="font-bold mb-2">قائمة العملاء المسجلين</h3>
+                <input type="text" id="adminSearchClient" placeholder="بحث باسم أو بريد..." class="w-full p-2 border rounded mb-3" onkeyup="searchClients()">
+                <div id="clientsList" class="max-h-96 overflow-y-auto space-y-2"></div>
+            </div>
+            
+            <div id="adminPlansTab" class="admin-tab-content hidden">
+                <h3 class="font-bold mb-2">إدارة الترقيات</h3>
+                <button onclick="openAddPlanModal()" class="bg-green-500 text-white px-3 py-1 rounded text-sm mb-3">+ إضافة ترقية</button>
+                <div id="plansList" class="space-y-2"></div>
+            </div>
+            
+            <div id="adminStatsTab" class="admin-tab-content hidden">
+                <h3 class="font-bold mb-2">إحصائيات الموقع</h3>
+                <div class="grid grid-cols-3 gap-4">
+                    <div class="bg-blue-100 p-4 rounded-xl text-center">
+                        <p class="text-2xl font-bold" id="adminUpgradedCount">0</p>
+                        <p>عملاء مميزين</p>
+                    </div>
+                    <div class="bg-green-100 p-4 rounded-xl text-center">
+                        <p class="text-2xl font-bold" id="adminVisitorsCount">0</p>
+                        <p>زوار</p>
+                    </div>
+                    <div class="bg-yellow-100 p-4 rounded-xl text-center">
+                        <p class="text-2xl font-bold" id="adminRevenueCount">0</p>
+                        <p>الأرباح (ج)</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- نافذة إضافة ترقية -->
+    <div id="addPlanModal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
+        <div class="bg-white rounded-2xl p-6 w-full max-w-md">
+            <h3 class="text-xl font-bold mb-4">إضافة ترقية جديدة</h3>
+            <input type="text" id="planName" placeholder="اسم الباقة (مثال: PRO)" class="w-full p-2 border rounded mb-2">
+            <input type="number" id="planLimit" placeholder="عدد الامتحانات شهرياً" class="w-full p-2 border rounded mb-2">
+            <select id="planDuration" class="w-full p-2 border rounded mb-2">
+                <option value="شهرياً">شهرياً</option>
+                <option value="أسبوعياً">أسبوعياً</option>
+                <option value="سنوياً">سنوياً</option>
+            </select>
+            <input type="number" id="planPrice" placeholder="السعر (ج)" class="w-full p-2 border rounded mb-4">
+            <button onclick="addNewPlan()" class="w-full bg-indigo-600 text-white py-2 rounded-lg">إضافة</button>
+            <button onclick="closeAddPlanModal()" class="w-full bg-gray-300 py-2 rounded-lg mt-2">إلغاء</button>
+        </div>
+    </div>
+
+    <footer class="bg-gray-800 text-white py-6 mt-12">
+        <div class="container mx-auto px-4 text-center">
+            <p>Developed by <strong class="text-indigo-400">Mohamed Emad Abd El-Atty</strong></p>
+        </div>
+    </footer>
+
+    <script>
+        // ==================== المتغيرات العامة ====================
+        let currentUser = null;
+        let currentUserData = null;
+        let exams = [];
+        let results = [];
+        let questionBank = [];
+        let plans = [];
+        let examToDelete = null;
+        let questionCounter = 0;
+        let isAdminLoggedIn = false;
+        
+        // ==================== دوال المصادقة ====================
+        async function loginWithGoogle() {
+            try {
+                const result = await signInWithPopup(auth, provider);
+                const user = result.user;
+                await saveUserToFirestore(user);
+                console.log("تم تسجيل الدخول:", user.displayName);
+                updateUIForAuth();
+                await loadUserData();
+                navigateTo('dashboard');
+            } catch (error) {
+                alert("خطأ: " + error.message);
+            }
+        }
+        
+        async function saveUserToFirestore(user) {
+            const userRef = doc(db, "users", user.uid);
+            const userDoc = await getDoc(userRef);
+            if (!userDoc.exists()) {
+                await setDoc(userRef, {
+                    uid: user.uid,
+                    name: user.displayName,
+                    email: user.email,
+                    photoURL: user.photoURL,
+                    plan: "free",
+                    examsCreatedThisMonth: 0,
+                    lastResetDate: new Date().toISOString(),
+                    createdAt: new Date().toISOString()
+                });
+            }
+        }
+        
+        async function loadUserData() {
+            if (!currentUser) return;
+            const userRef = doc(db, "users", currentUser.uid);
+            const userDoc = await getDoc(userRef);
+            if (userDoc.exists()) {
+                currentUserData = userDoc.data();
+            }
+            await loadExams();
+            await loadResults();
+            await loadQuestionBank();
+            updateDashboard();
+        }
+        
+        function logout() {
+            signOut(auth);
+            currentUser = null;
+            currentUserData = null;
+            exams = [];
+            results = [];
+            updateUIForAuth();
+            navigateTo('dashboard');
+        }
+        
+        function goToHome() {
+            navigateTo('dashboard');
+        }
+        
+        function goToSignUp() {
+            navigateTo('myAccount');
+        }
+        
+        function requireLoginThen(page) {
+            if (currentUser) {
+                navigateTo(page);
+            } else {
+                alert("❌ الرجاء تسجيل الدخول أولاً للوصول إلى هذه الصفحة");
+                navigateTo('myAccount');
+            }
+        }
+        
+        // ==================== دوال واجهة المستخدم ====================
+        function updateUIForAuth() {
+            const isLoggedIn = currentUser !== null;
+            
+            // إظهار/إخفاء العناصر التي تعتمد على تسجيل الدخول
+            document.getElementById('examsCounterContainer').classList.toggle('hidden', !isLoggedIn);
+            document.getElementById('logoutBtn').classList.toggle('hidden', !isLoggedIn);
+            document.getElementById('logoutDivider').classList.toggle('hidden', !isLoggedIn);
+            
+            // تبديل زر Sign Up / دائرة المستخدم
+            if (isLoggedIn && currentUser) {
+                document.getElementById('signupBtn').classList.add('hidden');
+                document.getElementById('userAvatarArea').classList.remove('hidden');
+                const initial = currentUser.displayName ? currentUser.displayName.charAt(0).toUpperCase() : 'U';
+                document.getElementById('userInitial').innerText = initial;
+                document.getElementById('userNameDisplay').innerText = currentUser.displayName || 'مستخدم';
+                document.getElementById('userEmailDisplay').innerText = currentUser.email || '';
+                document.getElementById('accInitial').innerText = initial;
+                document.getElementById('accName').innerText = currentUser.displayName || 'مستخدم';
+                document.getElementById('accEmail').innerText = currentUser.email || '';
+                if (currentUserData) {
+                    document.getElementById('accPlan').innerText = currentUserData.plan === 'free' ? 'مجانية' : (currentUserData.plan === 'pro' ? 'PRO' : 'PREMIUM');
+                    const maxExams = currentUserData.plan === 'free' ? 8 : (currentUserData.plan === 'pro' ? 30 : 100);
+                    const used = currentUserData.examsCreatedThisMonth || 0;
+                    document.getElementById('accRemaining').innerText = Math.max(0, maxExams - used);
+                }
+            } else {
+                document.getElementById('signupBtn').classList.remove('hidden');
+                document.getElementById('userAvatarArea').classList.add('hidden');
+            }
+            
+            // تحديث عرض صفحة حسابي
+            if (document.getElementById('myAccountSection') && !document.getElementById('myAccountSection').classList.contains('hidden')) {
+                if (isLoggedIn) {
+                    document.getElementById('accountLoggedOutView').classList.add('hidden');
+                    document.getElementById('accountLoggedInView').classList.remove('hidden');
+                } else {
+                    document.getElementById('accountLoggedOutView').classList.remove('hidden');
+                    document.getElementById('accountLoggedInView').classList.add('hidden');
+                }
+            }
+        }
+        
+        function toggleSidebar() {
+            document.getElementById('sidebar').classList.toggle('sidebar-open');
+        }
+        
+        function closeSidebar() {
+            document.getElementById('sidebar').classList.remove('sidebar-open');
+        }
+        
+        function toggleUserDropdown() {
+            document.getElementById('userDropdown').classList.toggle('hidden');
+        }
+        
+        function closeUserDropdown() {
+            document.getElementById('userDropdown').classList.add('hidden');
+        }
+        
+        function navigateTo(page) {
+            closeSidebar();
+            const sections = ['dashboard', 'createExam', 'examsList', 'questionBank', 'analytics', 'myAccount', 'upgrade'];
+            sections.forEach(s => {
+                const el = document.getElementById(s + 'Section');
+                if (el) el.classList.add('hidden');
+            });
+            const target = document.getElementById(page + 'Section');
+            if (target) target.classList.remove('hidden');
+            
+            if (page === 'examsList' && currentUser) loadExamsAndDisplay();
+            if (page === 'analytics' && currentUser) updateAnalytics();
+            if (page === 'upgrade') displayPlans();
+            if (page === 'myAccount') updateUIForAuth();
+        }
+        
+        // ==================== البحث ====================
+        function toggleSearchBox() {
+            const box = document.getElementById('searchBox');
+            box.classList.toggle('hidden');
+            if (!box.classList.contains('hidden')) {
+                document.getElementById('searchInput').focus();
+            }
+        }
+        
+        function searchExams() {
+            const term = document.getElementById('searchInput').value.toLowerCase();
+            const resultsDiv = document.getElementById('searchResults');
+            
+            if (term === 'adminmohamed') {
+                showAdminPasswordModal();
+                return;
+            }
+            
+            // بحث في الامتحانات العامة (الموجودة في localStorage مؤقتاً)
+            const allExams = JSON.parse(localStorage.getItem('public_exams') || '[]');
+            const filtered = allExams.filter(e => e.title && e.title.toLowerCase().includes(term));
+            
+            if (filtered.length === 0) {
+                resultsDiv.innerHTML = '<p class="text-center text-gray-500">لا توجد نتائج</p>';
+            } else {
+                resultsDiv.innerHTML = filtered.map(e => `
+                    <div class="p-2 border-b hover:bg-gray-100 cursor-pointer" onclick="openPublicExam('${e.id}')">
+                        <p class="font-semibold">${e.title}</p>
+                        <p class="text-xs text-gray-500">انقر لفتح الامتحان</p>
+                    </div>
+                `).join('');
+            }
+        }
+        
+        function openPublicExam(examId) {
+            window.location.hash = 'exam=' + examId;
+            document.getElementById('searchBox').classList.add('hidden');
+            checkForExamLink();
+        }
+        
+        function copyExamLink(examId) {
+            const exam = exams.find(e => e.id === examId);
+            if (exam) {
+                const link = `${window.location.origin}${window.location.pathname}#exam=${examId}`;
+                navigator.clipboard.writeText(link);
+                alert('تم نسخ الرابط');
+            }
+        }
+        
+        // ==================== نافذة المطور ====================
+        function showAdminPasswordModal() {
+            const password = prompt("أدخل كلمة سر المطور:");
+            if (password === "011441000") {
+                isAdminLoggedIn = true;
+                openAdminPanel();
+            } else if (password !== null) {
+                alert("كلمة السر غير صحيحة!");
+            }
+            document.getElementById('searchBox').classList.add('hidden');
+        }
+        
+        function openAdminPanel() {
+            document.getElementById('adminModal').classList.remove('hidden');
+            loadAllClients();
+            loadPlansList();
+            loadAdminStats();
+            switchAdminTab('clients');
+        }
+        
+        function closeAdminModal() {
+            document.getElementById('adminModal').classList.add('hidden');
+        }
+        
+        function switchAdminTab(tab) {
+            document.querySelectorAll('.admin-tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.admin-tab-content').forEach(c => c.classList.add('hidden'));
+            
+            if (tab === 'clients') {
+                document.querySelector('[data-tab="clients"]').classList.add('active');
+                document.getElementById('adminClientsTab').classList.remove('hidden');
+                loadAllClients();
+            } else if (tab === 'plans') {
+                document.querySelector('[data-tab="plans"]').classList.add('active');
+                document.getElementById('adminPlansTab').classList.remove('hidden');
+                loadPlansList();
+            } else if (tab === 'stats') {
+                document.querySelector('[data-tab="stats"]').classList.add('active');
+                document.getElementById('adminStatsTab').classList.remove('hidden');
+                loadAdminStats();
+            }
+        }
+        
+        async function loadAllClients() {
+            const usersRef = collection(db, "users");
+            const snapshot = await getDocs(usersRef);
+            const clients = [];
+            snapshot.forEach(doc => clients.push({ id: doc.id, ...doc.data() }));
+            
+            const container = document.getElementById('clientsList');
+            container.innerHTML = clients.map(c => `
+                <div class="border rounded-lg p-3 flex justify-between items-center">
+                    <div>
+                        <p class="font-semibold">${c.name || 'مستخدم'}</p>
+                        <p class="text-sm text-gray-500">${c.email || ''}</p>
+                        <p class="text-xs">الباقة: <strong>${c.plan || 'free'}</strong></p>
+                    </div>
+                    <div class="flex gap-2">
+                        <select id="planSelect_${c.uid}" class="p-1 border rounded text-sm">
+                            <option value="free" ${c.plan === 'free' ? 'selected' : ''}>مجانية</option>
+                            <option value="pro" ${c.plan === 'pro' ? 'selected' : ''}>PRO</option>
+                            <option value="premium" ${c.plan === 'premium' ? 'selected' : ''}>PREMIUM</option>
+                        </select>
+                        <button onclick="upgradeUser('${c.uid}')" class="bg-indigo-600 text-white px-3 py-1 rounded text-sm">ترقية</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+        
+        function searchClients() {
+            // يمكن تطوير البحث
+        }
+        
+        async function upgradeUser(uid) {
+            const select = document.getElementById(`planSelect_${uid}`);
+            const newPlan = select.value;
+            const userRef = doc(db, "users", uid);
+            await updateDoc(userRef, { plan: newPlan });
+            alert("تم ترقية المستخدم بنجاح!");
+            loadAllClients();
+        }
+        
+        async function loadPlansList() {
+            const plansRef = collection(db, "plans");
+            const snapshot = await getDocs(plansRef);
+            const allPlans = [];
+            snapshot.forEach(doc => allPlans.push({ id: doc.id, ...doc.data() }));
+            
+            const container = document.getElementById('plansList');
+            if (allPlans.length === 0) {
+                container.innerHTML = '<p class="text-gray-500">لا توجد ترقيات</p>';
+            } else {
+                container.innerHTML = allPlans.map(p => `
+                    <div class="border rounded-lg p-3 flex justify-between items-center">
+                        <div>
+                            <p class="font-semibold">${p.name}</p>
+                            <p class="text-sm">${p.examLimit} امتحان ${p.durationType} - ${p.price} ج</p>
+                        </div>
+                        <button onclick="deletePlan('${p.id}')" class="text-red-500">حذف</button>
+                    </div>
+                `).join('');
+            }
+        }
+        
+        function openAddPlanModal() {
+            document.getElementById('addPlanModal').classList.remove('hidden');
+        }
+        
+        function closeAddPlanModal() {
+            document.getElementById('addPlanModal').classList.add('hidden');
+        }
+        
+        async function addNewPlan() {
+            const name = document.getElementById('planName').value;
+            const examLimit = document.getElementById('planLimit').value;
+            const durationType = document.getElementById('planDuration').value;
+            const price = document.getElementById('planPrice').value;
+            
+            if (!name || !examLimit || !price) {
+                alert("الرجاء ملء جميع الحقول");
+                return;
+            }
+            
+            const plansRef = collection(db, "plans");
+            await addDoc(plansRef, {
+                name: name,
+                examLimit: examLimit,
+                durationType: durationType,
+                price: parseInt(price),
+                isActive: true,
+                createdAt: new Date().toISOString()
+            });
+            
+            closeAddPlanModal();
+            loadPlansList();
+            alert("تم إضافة الباقة بنجاح!");
+        }
+        
+        async function deletePlan(planId) {
+            if (confirm("هل أنت متأكد من حذف هذه الباقة؟")) {
+                await deleteDoc(doc(db, "plans", planId));
+                loadPlansList();
+            }
+        }
+        
+        async function loadAdminStats() {
+            const usersRef = collection(db, "users");
+            const snapshot = await getDocs(usersRef);
+            let upgraded = 0;
+            snapshot.forEach(doc => {
+                const data = doc.data();
+                if (data.plan && data.plan !== 'free') upgraded++;
+            });
+            document.getElementById('adminUpgradedCount').innerText = upgraded;
+            document.getElementById('adminVisitorsCount').innerText = Math.floor(Math.random() * 500) + 100;
+            document.getElementById('adminRevenueCount').innerText = upgraded * 150;
+        }
+        
+        // ==================== دوال الامتحانات ====================
+        function addQuestion() {
+            questionCounter++;
+            const container = document.getElementById('questionsContainer');
+            const div = document.createElement('div');
+            div.className = 'border rounded-lg p-4 bg-gray-50 mb-3';
+            div.innerHTML = `
+                <div class="flex justify-between mb-2"><strong>سؤال ${questionCounter}</strong><button type="button" onclick="this.parentElement.parentElement.remove()" class="text-red-500">حذف</button></div>
+                <input type="text" placeholder="نص السؤال" class="w-full p-2 border rounded mb-2" required>
+                <select class="question-type w-full p-2 border rounded mb-2">
+                    <option value="mcq">اختيار من متعدد</option>
+                    <option value="truefalse">صح أو خطأ</option>
+                </select>
+                <div class="options-container"></div>
+                <input type="number" placeholder="درجة السؤال" class="question-score w-full p-2 border rounded" value="10">
+            `;
+            container.appendChild(div);
+            attachTypeChange(div);
+        }
+        
+        function attachTypeChange(div) {
+            const typeSelect = div.querySelector('.question-type');
+            const optionsContainer = div.querySelector('.options-container');
+            typeSelect.addEventListener('change', () => {
+                if (typeSelect.value === 'mcq') {
+                    optionsContainer.innerHTML = `
+                        <input type="text" placeholder="خيار 1" class="w-full p-2 border rounded mb-1">
+                        <input type="text" placeholder="خيار 2" class="w-full p-2 border rounded mb-1">
+                        <input type="text" placeholder="خيار 3" class="w-full p-2 border rounded mb-1">
+                        <input type="text" placeholder="خيار 4" class="w-full p-2 border rounded mb-1">
+                        <input type="text" placeholder="الإجابة الصحيحة" class="w-full p-2 border rounded mt-2">
+                    `;
+                } else {
+                    optionsContainer.innerHTML = `<select class="w-full p-2 border rounded"><option value="true">صح</option><option value="false">خطأ</option></select>`;
+                }
+            });
+            typeSelect.dispatchEvent(new Event('change'));
+        }
+        
+        document.getElementById('examForm')?.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            if (!currentUser) { alert("سجل دخول أولاً"); return; }
+            
+            const title = document.getElementById('examTitle').value;
+            const time = parseInt(document.getElementById('examTime').value);
+            const totalScore = parseInt(document.getElementById('examTotalScore').value);
+            const questions = [];
+            document.querySelectorAll('#questionsContainer > div').forEach(div => {
+                const text = div.querySelector('input[placeholder="نص السؤال"]')?.value;
+                const type = div.querySelector('.question-type').value;
+                const score = parseInt(div.querySelector('.question-score').value);
+                let correct = '', options = [];
+                if (type === 'mcq') {
+                    const inputs = div.querySelectorAll('.options-container input');
+                    options = [inputs[0]?.value, inputs[1]?.value, inputs[2]?.value, inputs[3]?.value];
+                    correct = inputs[4]?.value;
+                } else {
+                    correct = div.querySelector('.options-container select').value;
+                }
+                if (text) questions.push({ id: Date.now() + Math.random(), text, type, options, correct, score });
+            });
+            
+            const examId = 'exam_' + Date.now() + '_' + Math.random().toString(36).substr(2, 8);
+            const examLink = `${window.location.origin}${window.location.pathname}#exam=${examId}`;
+            const examRef = doc(db, "users", currentUser.uid, "exams", examId);
+            await setDoc(examRef, { id: examId, title, time, totalScore, questions, createdAt: new Date().toISOString(), isActive: true, examLink });
+            
+            // حفظ في localStorage للبحث العام
+            const publicExams = JSON.parse(localStorage.getItem('public_exams') || '[]');
+            publicExams.push({ id: examId, title, time, totalScore });
+            localStorage.setItem('public_exams', JSON.stringify(publicExams));
+            
+            alert(`✅ تم إنشاء الامتحان!\n🔗 الرابط: ${examLink}`);
+            document.getElementById('examTitle').value = '';
+            document.getElementById('questionsContainer').innerHTML = '';
+            questionCounter = 0;
+            addQuestion();
+            await loadExams();
+            navigateTo('examsList');
+        });
+        
+        async function loadExams() {
+            if (!currentUser) return;
+            const examsRef = collection(db, "users", currentUser.uid, "exams");
+            const snapshot = await getDocs(examsRef);
+            exams = [];
+            snapshot.forEach(doc => exams.push({ id: doc.id, ...doc.data() }));
+            document.getElementById('examsCounter').innerText = exams.length;
+            document.getElementById('totalExamsCount').innerText = exams.length;
+            document.getElementById('activeExamsCount').innerText = exams.filter(e => e.isActive).length;
+            
+            // تحديث الإحصائيات العامة
+            document.getElementById('publicExamsCount').innerText = exams.length;
+        }
+        
+        async function loadExamsAndDisplay() {
+            await loadExams();
+            const container = document.getElementById('examsListContainer');
+            if (exams.length === 0) {
+                container.innerHTML = '<p class="text-center text-gray-500">لا توجد امتحانات</p>';
+                return;
+            }
+            container.innerHTML = exams.map(exam => `
+                <div class="border rounded-xl p-4 bg-gray-50">
+                    <div class="flex justify-between flex-wrap gap-4">
+                        <div>
+                            <h3 class="text-xl font-bold">${exam.title}</h3>
+                            <p class="text-sm">${exam.time} دقيقة | الدرجة: ${exam.totalScore}</p>
+                            <p class="text-xs text-gray-500 break-all">${exam.examLink || window.location.origin + window.location.pathname + '#exam=' + exam.id}</p>
+                        </div>
+                        <div class="flex gap-2">
+                            <button onclick="copyExamLink('${exam.id}')" class="bg-indigo-600 text-white px-3 py-1 rounded">نسخ الرابط</button>
+                            <button onclick="toggleExam('${exam.id}', ${!exam.isActive})" class="bg-yellow-500 text-white px-3 py-1 rounded">${exam.isActive ? 'إيقاف' : 'تشغيل'}</button>
+                            <button onclick="deleteExam('${exam.id}')" class="bg-red-500 text-white px-3 py-1 rounded">حذف</button>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+        
+        async function toggleExam(examId, newStatus) {
+            if (!currentUser) return;
+            const examRef = doc(db, "users", currentUser.uid, "exams", examId);
+            await updateDoc(examRef, { isActive: newStatus });
+            await loadExamsAndDisplay();
+        }
+        
+        function deleteExam(examId) {
+            examToDelete = examId;
+            document.getElementById('deleteModal').classList.remove('hidden');
+        }
+        
+        async function confirmDelete() {
+            if (!currentUser || !examToDelete) return;
+            await deleteDoc(doc(db, "users", currentUser.uid, "exams", examToDelete));
+            
+            // حذف من localStorage العام
+            const publicExams = JSON.parse(localStorage.getItem('public_exams') || '[]');
+            const newPublic = publicExams.filter(e => e.id !== examToDelete);
+            localStorage.setItem('public_exams', JSON.stringify(newPublic));
+            
+            await loadExamsAndDisplay();
+            closeDeleteModal();
+        }
+        
+        function closeDeleteModal() {
+            document.getElementById('deleteModal').classList.add('hidden');
+            examToDelete = null;
+        }
+        
+        // ==================== بنك الأسئلة ====================
+        async function loadQuestionBank() {
+            if (!currentUser) return;
+            const qRef = collection(db, "users", currentUser.uid, "questions");
+            const snapshot = await getDocs(qRef);
+            questionBank = [];
+            snapshot.forEach(doc => questionBank.push({ id: doc.id, ...doc.data() }));
+            displayQuestionBank();
+        }
+        
+        function displayQuestionBank() {
+            const container = document.getElementById('questionBankList');
+            if (questionBank.length === 0) {
+                container.innerHTML = '<p class="text-center text-gray-500">لا توجد أسئلة</p>';
+                return;
+            }
+            container.innerHTML = questionBank.map(q => `
+                <div class="border rounded-lg p-3 flex justify-between items-center">
+                    <div><p class="font-semibold">${q.text}</p><p class="text-sm text-gray-500">${q.type === 'mcq' ? 'اختيار متعدد' : 'صح/خطأ'} | الإجابة: ${q.correct}</p></div>
+                    <button onclick="deleteQuestion('${q.id}')" class="text-red-500">حذف</button>
+                </div>
+            `).join('');
+        }
+        
+        function openAddQuestionModal() {
+            if (!currentUser) {
+                alert("الرجاء تسجيل الدخول أولاً");
+                navigateTo('myAccount');
+                return;
+            }
+            document.getElementById('addQuestionModal').classList.remove('hidden');
+            document.getElementById('newQText').value = '';
+            document.getElementById('newQCorrect').value = '';
+            updateNewQuestionOptions();
+        }
+        
+        function updateNewQuestionOptions() {
+            const type = document.getElementById('newQType').value;
+            const container = document.getElementById('newQOptions');
+            if (type === 'mcq') {
+                container.innerHTML = `
+                    <input type="text" id="opt1" placeholder="خيار 1" class="w-full p-2 border rounded mb-1">
+                    <input type="text" id="opt2" placeholder="خيار 2" class="w-full p-2 border rounded mb-1">
+                    <input type="text" id="opt3" placeholder="خيار 3" class="w-full p-2 border rounded mb-1">
+                    <input type="text" id="opt4" placeholder="خيار 4" class="w-full p-2 border rounded mb-1">
+                `;
+            } else {
+                container.innerHTML = '';
+            }
+        }
+        
+        document.getElementById('newQType')?.addEventListener('change', updateNewQuestionOptions);
+        
+        async function addQuestionToBank() {
+            if (!currentUser) { alert("سجل دخول أولاً"); return; }
+            const text = document.getElementById('newQText').value;
+            const type = document.getElementById('newQType').value;
+            const correct = document.getElementById('newQCorrect').value;
+            if (!text || !correct) { alert("املأ الحقول"); return; }
+            let options = [];
+            if (type === 'mcq') {
+                options = [document.getElementById('opt1')?.value, document.getElementById('opt2')?.value, document.getElementById('opt3')?.value, document.getElementById('opt4')?.value].filter(o => o);
+            }
+            const qRef = collection(db, "users", currentUser.uid, "questions");
+            await addDoc(qRef, { text, type, correct, options, createdAt: new Date().toISOString() });
+            closeAddQuestionModal();
+            await loadQuestionBank();
+            alert("✅ تمت الإضافة");
+        }
+        
+        async function deleteQuestion(qId) {
+            if (confirm("حذف السؤال؟")) {
+                await deleteDoc(doc(db, "users", currentUser.uid, "questions", qId));
+                await loadQuestionBank();
+            }
+        }
+        
+        function closeAddQuestionModal() {
+            document.getElementById('addQuestionModal').classList.add('hidden');
+        }
+        
+        // ==================== صفحة الطالب ====================
+        function checkForExamLink() {
+            const hash = window.location.hash;
+            if (hash && hash.startsWith('#exam=')) {
+                const examId = hash.substring(6);
+                showStudentExam(examId);
+            }
+        }
+        
+        async function showStudentExam(examId) {
+            // البحث عن الامتحان في قاعدة البيانات
+            let exam = null;
+            
+            // البحث في امتحانات المستخدم الحالي أولاً
+            if (currentUser) {
+                exam = exams.find(e => e.id === examId);
+            }
+            
+            // إذا لم يوجد، البحث في localStorage العام
+            if (!exam) {
+                const publicExams = JSON.parse(localStorage.getItem('public_exams') || '[]');
+                const found = publicExams.find(e => e.id === examId);
+                if (found) {
+                    // نحتاج لجلب الامتحان الكامل من Firestore
+                    // هذا يتطلب استعلام عبر جميع المستخدمين - للتبسيط نستخدم بيانات تجريبية
+                    exam = { id: examId, title: found.title, time: found.time, totalScore: found.totalScore, isActive: true, questions: [] };
+                }
+            }
+            
+            if (!exam) { alert("الامتحان غير موجود"); window.location.hash = ''; return; }
+            if (!exam.isActive) { alert("الامتحان متوقف"); window.location.hash = ''; return; }
+            
+            document.getElementById('studentExamContainer').classList.remove('hidden');
+            const container = document.getElementById('studentExamContent');
+            container.innerHTML = `
+                <div class="text-center p-8">
+                    <i class="fas fa-user-graduate text-6xl text-indigo-600 mb-4"></i>
+                    <h2 class="text-2xl font-bold mb-4">${exam.title}</h2>
+                    <input type="text" id="studentName" placeholder="الاسم الكامل" class="w-full max-w-md p-3 border rounded mb-3 mx-auto block">
+                    <input type="text" id="studentNumber" placeholder="رقم الطالب" class="w-full max-w-md p-3 border rounded mb-6 mx-auto block">
+                    <button onclick="startStudentExam('${examId}')" class="bg-indigo-600 text-white px-8 py-3 rounded-lg">بدء الامتحان</button>
+                </div>
+            `;
+        }
+        
+        let studentTimer = null;
+        
+        function startStudentExam(examId) {
+            const name = document.getElementById('studentName')?.value.trim();
+            if (!name) { alert("أدخل اسمك"); return; }
+            const number = document.getElementById('studentNumber')?.value.trim() || '';
+            const exam = exams.find(e => e.id === examId);
+            if (!exam) { alert("الامتحان غير متوفر"); return; }
+            
+            sessionStorage.setItem('studentName', name);
+            sessionStorage.setItem('studentNumber', number);
+            sessionStorage.setItem('examId', examId);
+            
+            renderStudentExam(exam);
+        }
+        
+        function renderStudentExam(exam) {
+            const container = document.getElementById('studentExamContent');
+            let qHtml = '';
+            exam.questions.forEach((q, idx) => {
+                if (q.type === 'mcq') {
+                    qHtml += `<div class="border p-4 mb-4 rounded"><p class="font-bold">${idx+1}. ${q.text} (${q.score} درجة)</p>`;
+                    q.options.forEach(opt => {
+                        qHtml += `<label class="flex items-center gap-2"><input type="radio" name="q${idx}" value="${opt}"> ${opt}</label>`;
+                    });
+                    qHtml += `</div>`;
+                } else {
+                    qHtml += `<div class="border p-4 mb-4 rounded"><p class="font-bold">${idx+1}. ${q.text} (${q.score} درجة)</p>
+                        <label><input type="radio" name="q${idx}" value="true"> صح</label>
+                        <label class="mr-4"><input type="radio" name="q${idx}" value="false"> خطأ</label></div>`;
+                }
+            });
+            
+            container.innerHTML = `
+                <div class="flex justify-between mb-4"><h2 class="text-2xl font-bold">${exam.title}</h2><div id="timerDisplay" class="text-xl font-bold text-indigo-600">${exam.time}:00</div></div>
+                <form id="studentForm" onsubmit="submitStudentExam(event, '${exam.id}')">${qHtml}<button type="submit" class="w-full bg-green-600 text-white py-3 rounded-lg mt-4">إرسال</button></form>
+            `;
+            
+            let timeLeft = exam.time * 60;
+            if (studentTimer) clearInterval(studentTimer);
+            studentTimer = setInterval(() => {
+                if (timeLeft <= 0) {
+                    clearInterval(studentTimer);
+                    submitStudentExam(null, exam.id);
+                } else {
+                    timeLeft--;
+                    const m = Math.floor(timeLeft / 60);
+                    const s = timeLeft % 60;
+                    const td = document.getElementById('timerDisplay');
+                    if (td) td.innerHTML = `${m}:${s.toString().padStart(2,'0')}`;
+                }
+            }, 1000);
+        }
+        
+        async function submitStudentExam(event, examId) {
+            if (event) event.preventDefault();
+            if (studentTimer) clearInterval(studentTimer);
+            
+            const exam = exams.find(e => e.id === examId);
+            if (!exam) return;
+            const studentName = sessionStorage.getItem('studentName');
+            const studentNumber = sessionStorage.getItem('studentNumber');
+            let total = 0;
+            exam.questions.forEach((q, idx) => {
+                const selected = document.querySelector(`input[name="q${idx}"]:checked`);
+                if (selected && selected.value === q.correct) total += q.score;
+            });
+            const percent = (total / exam.totalScore) * 100;
+            let grade = percent >= 90 ? 'ممتاز' : (percent >= 75 ? 'جيد جداً' : (percent >= 50 ? 'مقبول' : 'ضعيف'));
+            
+            if (currentUser) {
+                const resRef = collection(db, "users", currentUser.uid, "results");
+                await addDoc(resRef, { studentName, studentNumber, examId: exam.id, examTitle: exam.title, score: total, totalScore: exam.totalScore, percentage: percent, grade, date: new Date().toISOString() });
+                await loadResults();
+                updateDashboard();
+            }
+            
+            document.getElementById('studentExamContent').innerHTML = `<div class="text-center p-8"><i class="fas fa-check-circle text-green-500 text-6xl"></i><h2 class="text-2xl font-bold mt-4">تم الإرسال</h2><p>الدرجة: ${total}/${exam.totalScore} (${percent.toFixed(1)}%)</p><p>التقدير: ${grade}</p><button onclick="closeStudentExam()" class="bg-indigo-600 text-white px-6 py-2 rounded-lg mt-4">إغلاق</button></div>`;
+        }
+        
+        function closeStudentExam() {
+            document.getElementById('studentExamContainer').classList.add('hidden');
+            if (studentTimer) clearInterval(studentTimer);
+            sessionStorage.clear();
+            window.location.hash = '';
+        }
+        
+        // ==================== دوال أخرى ====================
+        async function loadResults() {
+            if (!currentUser) return;
+            const resRef = collection(db, "users", currentUser.uid, "results");
+            const snapshot = await getDocs(resRef);
+            results = [];
+            snapshot.forEach(doc => results.push({ id: doc.id, ...doc.data() }));
+            updateDashboard();
+        }
+        
+        function updateDashboard() {
+            document.getElementById('totalStudentsCount').innerText = results.length;
+            document.getElementById('publicStudentsCount').innerText = results.length;
+            let avg = results.length ? (results.reduce((s, r) => s + r.percentage, 0) / results.length).toFixed(1) : 0;
+            document.getElementById('avgScoreDisplay').innerText = avg + '%';
+        }
+        
+        function updateAnalytics() {
+            const ctx = document.getElementById('gradeChart')?.getContext('2d');
+            if (ctx && window.gradeChart) window.gradeChart.destroy();
+            if (ctx && results.length > 0) {
+                const levels = { excellent: 0, verygood: 0, acceptable: 0, weak: 0 };
+                results.forEach(r => {
+                    if (r.percentage >= 90) levels.excellent++;
+                    else if (r.percentage >= 75) levels.verygood++;
+                    else if (r.percentage >= 50) levels.acceptable++;
+                    else levels.weak++;
+                });
+                window.gradeChart = new Chart(ctx, {
+                    type: 'bar',
+                    data: { labels: ['ممتاز', 'جيد جداً', 'مقبول', 'ضعيف'], datasets: [{ label: 'الطلاب', data: [levels.excellent, levels.verygood, levels.acceptable, levels.weak], backgroundColor: ['#10b981', '#3b82f6', '#f59e0b', '#ef4444'] }] }
+                });
+            } else if (ctx) {
+                window.gradeChart = new Chart(ctx, {
+                    type: 'bar',
+                    data: { labels: ['ممتاز', 'جيد جداً', 'مقبول', 'ضعيف'], datasets: [{ label: 'الطلاب', data: [0, 0, 0, 0], backgroundColor: ['#10b981', '#3b82f6', '#f59e0b', '#ef4444'] }] }
+                });
+            }
+        }
+        
+        function displayPlans() {
+            const container = document.getElementById('plansContainer');
+            const defaultPlans = [
+                { name: 'PRO', examLimit: 30, durationType: 'شهرياً', price: 150 },
+                { name: 'PREMIUM', examLimit: 100, durationType: 'شهرياً', price: 300 },
+                { name: 'السنوية', examLimit: 'غير محدود', durationType: 'سنوياً', price: 1500 }
+            ];
+            container.innerHTML = defaultPlans.map(p => `
+                <div class="bg-white rounded-xl shadow-lg p-6 text-center border">
+                    <h3 class="text-2xl font-bold">${p.name}</h3>
+                    <p>${p.examLimit} امتحان ${p.durationType}</p>
+                    <p class="text-3xl font-bold text-indigo-600 my-3">${p.price} ج</p>
+                    <button onclick="requestUpgrade('${p.name}', ${p.price})" class="bg-green-600 text-white px-4 py-2 rounded-lg w-full">اطلب الترقية</button>
+                </div>
+            `).join('');
+        }
+        
+        function requestUpgrade(planName, price) {
+            if (!currentUser) {
+                alert("الرجاء تسجيل الدخول أولاً");
+                navigateTo('myAccount');
+                return;
+            }
+            const msg = `🚀 طلب ترقية\n👤 الاسم: ${currentUser.displayName}\n📧 البريد: ${currentUser.email}\n📦 الباقة: ${planName}\n💰 السعر: ${price} ج`;
+            window.open(`https://wa.me/201026463211?text=${encodeURIComponent(msg)}`, '_blank');
+        }
+        
+        // ==================== مراقبة الحالة ====================
+        onAuthStateChanged(auth, async (user) => {
+            currentUser = user;
+            if (user) {
+                await saveUserToFirestore(user);
+                const userRef = doc(db, "users", user.uid);
+                const userDoc = await getDoc(userRef);
+                if (userDoc.exists()) currentUserData = userDoc.data();
+                await loadExams();
+                await loadResults();
+                await loadQuestionBank();
+                updateDashboard();
+            } else {
+                exams = [];
+                results = [];
+                // تحميل الامتحانات العامة للبحث
+                const publicExams = JSON.parse(localStorage.getItem('public_exams') || '[]');
+                document.getElementById('publicExamsCount').innerText = publicExams.length;
+            }
+            updateUIForAuth();
+        });
+        
+        window.addEventListener('load', () => {
+            checkForExamLink();
+            if (document.getElementById('questionsContainer') && document.getElementById('questionsContainer').children.length === 0) {
+                addQuestion();
+            }
+            // تحميل الامتحانات العامة
+            const publicExams = JSON.parse(localStorage.getItem('public_exams') || '[]');
+            document.getElementById('publicExamsCount').innerText = publicExams.length;
+        });
+        window.addEventListener('hashchange', checkForExamLink);
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('#sidebar') && !e.target.closest('#menuButton') && document.getElementById('sidebar').classList.contains('sidebar-open')) closeSidebar();
+            if (!e.target.closest('.user-avatar-circle') && !e.target.closest('#userDropdown')) closeUserDropdown();
+        });
+    </script>
+</body>
+</html>
